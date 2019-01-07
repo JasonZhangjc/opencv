@@ -1,6 +1,8 @@
 # OPENCV Applications
 The sift_white_cat.py is a short program to implement the SIFT algorithm.
+
 The ransac.py is a short program to implement the RANSAC algorithm.
+
 The mle.py is a short program to implement the Maximum Likelihood Estimation algorithm.
 
 This is a demo for how to use them.
