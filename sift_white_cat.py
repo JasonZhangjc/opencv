@@ -3,86 +3,96 @@ import numpy as np
 np.set_printoptions(threshold=np.inf)
 from matplotlib import pyplot as plt
 
+# ==========================================================================
+# This short program implements the Scale Invariant Feature Transform(SIFT)
+# THe "white_cat.jpg" can be replaced according to the demand of the user
+# ==========================================================================
+
 class sift_feature():
-    def __init__(self,siftIniSigma = 0.5,siftMaxIntreStepS = 5,contrThr = 0.04,r  = 10):
-        self.siftIniSigma = siftIniSigma
-        self.siftMaxIntreStepS = siftMaxIntreStepS
-        self.contrThr = contrThr
+    def __init__(self,sift_ini_sigma = 0.5,sift_max_intre_steps = 5,
+                 contr_thr = 0.04,r = 10):
+        self.sift_ini_sigma = sift_ini_sigma
+        self.sift_max_intre_steps = sift_max_intre_steps
+        self.contr_thr = contr_thr
         self.r = r
 
-    def add_good_ori_feature(self,smoothOriHist,magThr,numBin = 36):
-        hist = smoothOriHist
-        newRoiHist = np.zeros(shape=[numBin])
-        for i in  range(numBin):
-            l = (i+numBin-1)%numBin
-            r = (i+numBin+1)%numBin
+    def add_good_ori_feature(self,smooth_ori_hist,mag_thr,num_bin = 36):
+        hist = smooth_ori_hist
+        new_roi_hist = np.zeros(shape=[num_bin])
+        for i in  range(num_bin):
+            l = (i+num_bin-1)%num_bin
+            r = (i+num_bin+1)%num_bin
             c = i
-            if hist[c]>hist[l] and hist[c]>hist[r] and hist[c]>magThr:
-                bin = c + self.interpHistPeak(l = l,c =c ,r = r)
+            if hist[c]>hist[l] and hist[c]>hist[r] and hist[c]>mag_thr:
+                bin = c + self.interp_hist_peak(l = l,c =c ,r = r)
                 if bin<0:
-                    bin = (abs(numBin+bin))%numBin
-                elif bin>=numBin:
-                    bin = (bin-numBin)%numBin
+                    bin = (abs(num_bin+bin))%num_bin
+                elif bin>=num_bin:
+                    bin = (bin-num_bin)%num_bin
                 else:
                     bin = bin
                 bin = np.round(bin)
                 bin = bin.astype(np.int)
-                newRoiHist[bin] = hist[c]+self.interpHistPeak(l = hist[l],c = hist[c],r = hist[r])
-        return newRoiHist
+                new_roi_hist[bin] = hist[c]+self.interp_hist_peak(l = hist[l],
+                                                 c = hist[c],r = hist[r])
+        return new_roi_hist
 
-    def cal_oriHist(self,gaussPyr,keypoint,sigma,numBin = 36):
+    def cal_ori_hist(self,gauss_pyr,keypoint,sigma,num_bin = 36):
         rad = np.round(3*1.5*sigma)
         rad = rad.astype(np.int)
         o = keypoint[1]
         s = keypoint[2]
         r = keypoint[3]
         c = keypoint[4]
-        L = gaussPyr[o][s,:]
-        imWidth = L.shape[1]
-        imHeight = L.shape[0]
-        hist = np.zeros(shape=[numBin])
-        expDen = 2.0*sigma*sigma
+        L = gauss_pyr[o][s,:]
+        im_width = L.shape[1]
+        im_height = L.shape[0]
+        hist = np.zeros(shape=[num_bin])
+        exp_den = 2.0*sigma*sigma
         for i in range(-1*rad,rad+1):
             for j in range(-1*rad,rad+1):
-                rIdxs = r+i
-                cIdxs = c+j
-                if rIdxs<=0 or cIdxs<=0 or rIdxs>=imHeight-1 or cIdxs>=imWidth-1:
+                r_idxs = r+i
+                c_idxs = c+j
+                if r_idxs<=0 or c_idxs<=0 or r_idxs>=im_height-1 or c_idxs>=im_width-1:
                     continue
-                mag,theta = self.cal_mag_ori(rIdxs,cIdxs,L)
-                weight = np.exp(-(i*i+j*j)/expDen)
-                bin = np.round(numBin*(theta+np.pi)/(np.pi*2))
+                mag,theta = self.cal_mag_ori(r_idxs,c_idxs,L)
+                weight = np.exp(-(i*i+j*j)/exp_den)
+                bin = np.round(num_bin*(theta+np.pi)/(np.pi*2))
                 bin = bin.astype(np.int)
-                if bin>=numBin:
+                if bin>=num_bin:
                     bin = 0
                 hist[bin] = hist[bin]+weight*mag
         return hist
 		
-    def cal_smoothOriHist(self,oriHist):
-        numBin = len(oriHist)
-        smoothOriHist = np.zeros(shape=[numBin])
-        for i in range(numBin):
-            smoothOriHist[i] = 0.25*oriHist[(i+numBin-1)%numBin]+\
-                                 0.5*oriHist[i]+\
-                                 0.25*oriHist[(i+numBin+1)%numBin]
-        return smoothOriHist		
+    def cal_smooth_ori_hist(self,ori_hist):
+        num_bin = len(ori_hist)
+        smooth_ori_hist = np.zeros(shape=[num_bin])
+        for i in range(num_bin):
+            smooth_ori_hist[i] = 0.25*ori_hist[(i+num_bin-1)%num_bin]+\
+                                 0.5*ori_hist[i]+\
+                                 0.25*ori_hist[(i+num_bin+1)%num_bin]
+        return smooth_ori_hist		
 		
-    def interpHistPeak(self,l,c,r):
+    def interp_hist_peak(self,l,c,r):
         if abs(l-2.0*c+r)<10**(-6):
             return 0
         return 0.5*(l-r)/(l-2.0*c+r)
 		
-    def cal_featureOris(self,gaussPyr,keypoints,numBin = 36):
-        keyptsSigma = sift_featrue.keypoints_sigma(gaussPyr=gaussPyr, keypoints=keypoints)
-        featureOris = []
+    def cal_feature_oris(self,gauss_pyr,keypoints,num_bin = 36):
+        keypts_sigma = sift_featrue.keypoints_sigma(gauss_pyr=gauss_pyr, 
+                                                    keypoints=keypoints)
+        feature_oris = []
         for i in range(len(keypoints)):
             keypt = keypoints[i]
-            sigma = keyptsSigma[i]
-            oriHist = self.cal_oriHist(gaussPyr=gaussPyr,keypoint=keypt,sigma=sigma,numBin=numBin)
-            smoothOriHist = self.cal_smoothOriHist(oriHist=oriHist)
-            maxMag = np.max(smoothOriHist)
-            newOriHist = self.add_good_ori_feature(smoothOriHist = smoothOriHist,magThr=maxMag*0.8)
-            featureOris.append(newOriHist)
-        return np.array(featureOris)
+            sigma = keypts_sigma[i]
+            ori_hist = self.cal_ori_hist(gauss_pyr=gauss_pyr,keypoint=keypt,
+                                         sigma=sigma,num_bin=num_bin)
+            smooth_ori_hist = self.cal_smooth_ori_hist(ori_hist=ori_hist)
+            max_mag = np.max(smooth_ori_hist)
+            newori_hist = self.add_good_ori_feature(smooth_ori_hist = 
+                                        smooth_ori_hist,mag_thr=max_mag*0.8)
+            feature_oris.append(newori_hist)
+        return np.array(feature_oris)
 
     def cal_mag_ori(self,i,j,L):
         mag = np.sqrt(np.square(L[i+1,j]-L[i-1,j])+\
@@ -90,25 +100,26 @@ class sift_feature():
         theta = np.arctan((L[i,j+1]-L[i,j-1])/(L[i+1,j]-L[i-1,j]))
         return mag,theta
 
-    def keypoints_sigma(self,gaussPyr,keypoints,sigma = 0.5):
-        keyptsSigma = []
-        sNum = gaussPyr[0].shape[0]-3
+    def keypoints_sigma(self,gauss_pyr,keypoints,sigma = 0.5):
+        keypts_sigma = []
+        s_num = gauss_pyr[0].shape[0]-3
         for keypt in keypoints:
             o = keypt[1]
             s = keypt[2]
-            keyptSigma = sigma*pow(2,o+s/sNum)
-            keyptsSigma.append(keyptSigma)
-        return keyptsSigma
+            keyptSigma = sigma*pow(2,o+s/s_num)
+            keypts_sigma.append(keyptSigma)
+        return keypts_sigma
 
     def Hessian_2D(self,dog,i,j):
         point = dog[i, j]
         dxx = (dog[i, j + 1] + dog[i, j - 1] - 2 * point)
         dyy = (dog[i + 1, j] + dog[i - 1, j] - 2 * point)
-        dxy = (dog[i + 1, j + 1] - dog[i + 1, j - 1] - dog[i - 1, j + 1] + dog[i - 1, j - 1]) / 4.0
+        dxy = (dog[i + 1, j + 1] - dog[i + 1, j - 1] - dog[i - 1, j + 1] + 
+               dog[i - 1, j - 1]) / 4.0
         return np.array([[dxx, dxy],[dxy, dyy]])
 
-    def edgeLine(self,dogPyr,o,s,i,j):
-        dog = dogPyr[o][s,:]
+    def edge_line(self,dog_pyr,o,s,i,j):
+        dog = dog_pyr[o][s,:]
         dD2D = self.Hessian_2D(dog = dog,i = i,j = j)
         dxx = dD2D[0,0]
         dxy = dD2D[0,1]
@@ -122,40 +133,40 @@ class sift_feature():
             return False
         return True
 
-    def interpExtrem(self,dogPyr,o,s,i,j):
-        point = dogPyr[o][s,i,j]
-        sNum = dogPyr[o].shape[0]
-        iNum = dogPyr[o].shape[1]
-        jNum = dogPyr[o].shape[2]
-        for step in range(self.siftMaxIntreStepS):
-            if s<=0 or i<=0 or j<=0 or s>=sNum-1 or i>=iNum-1 or j>=jNum-1:
+    def interp_extrem(self,dog_pyr,o,s,i,j):
+        point = dog_pyr[o][s,i,j]
+        s_num = dog_pyr[o].shape[0]
+        i_num = dog_pyr[o].shape[1]
+        j_num = dog_pyr[o].shape[2]
+        for step in range(self.sift_max_intre_steps):
+            if s<=0 or i<=0 or j<=0 or s>=s_num-1 or i>=i_num-1 or j>=j_num-1:
                 return None
-            X = self.offset(dogPyr = dogPyr, o = o, s = s, i = i, j = j)
+            X = self.offset(dog_pyr = dog_pyr, o = o, s = s, i = i, j = j)
             xi = X[0];xj = X[1];xs = X[2];
             if abs(xi)<0.5 and abs(xj)<0.5 and abs(xs)<0.5:
                 break
             s = int(np.round(xs) + s)
             i = int(np.round(xi) + i)
             j = int(np.round(xj) + j)
-            if s<0 or i<0 or j<0 or s>=sNum or i>=iNum or j>=jNum:
+            if s<0 or i<0 or j<0 or s>=s_num or i>=i_num or j>=j_num:
                 return None
-        if step>=self.siftMaxIntreStepS-1:
+        if step>=self.sift_max_intre_steps-1:
             return None
-        dD = self.deriv_3D(dogPyr,o = o, s = s,i = i,j = j)
+        dD = self.deriv_3D(dog_pyr,o = o, s = s,i = i,j = j)
         D = point+0.5*np.dot(dD,X)
-        if D<self.contrThr/(sNum-2):
+        if D<self.contr_thr/(s_num-2):
             return None
         return [D,o,s,i,j]
 
-    def offset(self,dogPyr,o,s,i,j):
-        dD = self.deriv_3D(dogPyr=dogPyr,o=o,s = s, i = i, j = j)
-        H = self.hessian_3D(dogPyr=dogPyr,o = o,s = s, i = i, j = j)
-        HInv = cv2.invert(src=H,flags=cv2.DECOMP_SVD)[1]
-        X = np.dot(-1*HInv,dD)
+    def offset(self,dog_pyr,o,s,i,j):
+        dD = self.deriv_3D(dog_pyr=dog_pyr,o=o,s = s, i = i, j = j)
+        H = self.hessian_3D(dog_pyr=dog_pyr,o = o,s = s, i = i, j = j)
+        H_inv = cv2.invert(src=H,flags=cv2.DECOMP_SVD)[1]
+        X = np.dot(-1*H_inv,dD)
         return X
 
-    def hessian_3D(self,dogPyr,o,s,i,j):
-        dogs = dogPyr[o]
+    def hessian_3D(self,dog_pyr,o,s,i,j):
+        dogs = dog_pyr[o]
         point = dogs[s,i,j]
         dxx = (dogs[s,i,j+1]+dogs[s,i,j-1]-2*point)
         dyy = (dogs[s,i+1,j]+dogs[s,i-1,j]-2*point)
@@ -168,54 +179,57 @@ class sift_feature():
                dogs[s-1,i+1,j]+dogs[s-1,i-1,j])/4.0
         return np.array([[dxx,dxy,dxs],[dxy,dyy,dys],[dxs,dys,dss]])
 
-    def deriv_3D(self,dogPyr,o,s,i,j):
-        dogs = dogPyr[o]
+    def deriv_3D(self,dog_pyr,o,s,i,j):
+        dogs = dog_pyr[o]
         point = dogs[s,i,j]
         dx = dogs[s,i,j+1] - point
         dy = dogs[s,i+1,j] - point
         ds = dogs[s+1,i,j] - point
         return np.array([dx,dy,ds])
 
-    def extremePoint(self,dogPyr,o,s,i,j):
-        dogs = dogPyr[o]
+    def extreme_point(self,dog_pyr,o,s,i,j):
+        dogs = dog_pyr[o]
         point = dogs[s,i,j]
-        for sIdxs in range(s-1,s+2):
-            for iIdxs in range(i-1,i+2):
-                for jIdxs in range(j-1,j+2):
-                    if sIdxs == s and iIdxs == i and jIdxs == j:
+        for s_idxs in range(s-1,s+2):
+            for i_idxs in range(i-1,i+2):
+                for j_idxs in range(j-1,j+2):
+                    if s_idxs == s and i_idxs == i and j_idxs == j:
                         continue
-                    if point < 0 and point > dogs[sIdxs,iIdxs,jIdxs]:
+                    if point < 0 and point > dogs[s_idxs,i_idxs,j_idxs]:
                         return False
-                    if point >= 0 and point < dogs[sIdxs,iIdxs,jIdxs]:
+                    if point >= 0 and point < dogs[s_idxs,i_idxs,j_idxs]:
                         return False
         return True
 
-    def key_point_search(self,dogPyr):
+    def key_point_search(self,dog_pyr):
         keypoints = []
-        for o in range(len(dogPyr)):
-            for s in range(1,dogPyr[o].shape[0]-1):
-                for i in range(1,dogPyr[o][s].shape[0]-1):
-                    for j in range(1,dogPyr[o][s].shape[1]-1):
-                        if abs(dogPyr[o][s,i,j])<0.03:
+        for o in range(len(dog_pyr)):
+            for s in range(1,dog_pyr[o].shape[0]-1):
+                for i in range(1,dog_pyr[o][s].shape[0]-1):
+                    for j in range(1,dog_pyr[o][s].shape[1]-1):
+                        if abs(dog_pyr[o][s,i,j])<0.03:
                             continue
-                        if self.extremePoint(dogPyr=dogPyr,o = o,s = s,i = i,j = j):
-                            keypoint = self.interpExtrem(dogPyr = dogPyr,o = o, s = s,i = i, j = j)
+                        if self.extreme_point(dog_pyr=dog_pyr,o = o,
+                                              s = s,i = i,j = j):
+                            keypoint = self.interp_extrem(dog_pyr = dog_pyr,
+                                                o = o, s = s,i = i, j = j)
                             if keypoint is not None:
-                                if self.edgeLine(dogPyr = dogPyr,o = keypoint[1],s = keypoint[2],
-								                 i = keypoint[3],j = keypoint[4]) == False:
+                                if self.edge_line(dog_pyr = dog_pyr,
+                                    o = keypoint[1],s = keypoint[2],
+                                    i = keypoint[3],j = keypoint[4]) == False:
                                     keypoints.append(keypoint)
         return keypoints
 
-    def create_dogPyr(self,gaussPyr):
-        dogPyr = []
-        for octaves in gaussPyr:
+    def create_dog_pyr(self,gauss_pyr):
+        dog_pyr = []
+        for octaves in gauss_pyr:
             Dogs = []
             for i in range(1,octaves.shape[0]):
                 dog = octaves[i] - octaves[i-1]
                 Dogs.append(dog)
             Dogs = np.array(Dogs)
-            dogPyr.append(Dogs)
-        return dogPyr
+            dog_pyr.append(Dogs)
+        return dog_pyr
 
     def create_sigmas(self,octaves,S,sigma):
         storeies = S+3
@@ -227,50 +241,53 @@ class sift_feature():
                 sigmas[i, j] = sigma_i_origin * pow(k, j)
         return sigmas
 
-    def create_guassPyr(self,initImg,octaves,S = 3,sigma = None):
+    def create_guass_pyr(self,init_img,octaves,S = 3,sigma = None):
         storeies = S+3
-        # originImg = initImg[0:initImg.shape[0]:2,0:initImg.shape[1]:2]
+        # origin_img = init_img[0:init_img.shape[0]:2,0:init_img.shape[1]:2]
         # cv2.imshow('img',img)
         if sigma is None:
-            sigma = self.siftIniSigma
-        guassPyr = []
+            sigma = self.sift_ini_sigma
+        guass_pyr = []
 
         sigmas = self.create_sigmas(octaves,S,sigma)
         # print(sigmas)
         for i in range(octaves):
             imgs = []
-            originImg = initImg[0:initImg.shape[0]:int(pow(2,i+1)),
-                         0:initImg.shape[1]:int(pow(2,i+1))]
+            origin_img = init_img[0:init_img.shape[0]:int(pow(2,i+1)),
+                         0:init_img.shape[1]:int(pow(2,i+1))]
             for j in range(storeies):
                 if i == 0 and j == 0:
-                    imgs.append(originImg)
-                    # cv2.imshow('origin',originImg)
+                    imgs.append(origin_img)
+                    # cv2.imshow('origin',origin_img)
                     continue
                 else:
                     sig = sigmas[i,j]
                     size = int(sig*6+1)
                     if size%2 == 0:
                         size = size+1
-                    img = cv2.GaussianBlur(src=originImg,ksize=(size,size),sigmaX=sig,sigmaY=sig)
+                    img = cv2.GaussianBlur(src=origin_img,ksize=(size,size),
+                                            sigmaX=sig,sigmaY=sig)
                     imgs.append(img)
                     # cv2.imshow('img'+str(i)+str(j),img)
             imgs = np.array(imgs)
             # imgs = imgs.astype(np.float32)
-            guassPyr.append(np.array(imgs))
-        return guassPyr
+            guass_pyr.append(np.array(imgs))
+        return guass_pyr
 
     def create_minus_one_img(self,img,sigma = 1.6):
-        siftIniSigma = self.siftIniSigma
-        sig = np.sqrt(sigma*sigma-siftIniSigma*siftIniSigma*4)
-        initImg = cv2.cvtColor(src=img,code=cv2.COLOR_BGR2GRAY)
-        initImg = cv2.resize(src=initImg,dsize=(img.shape[1]*2,img.shape[0]*2),fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
-        initImg = cv2.GaussianBlur(src=initImg,ksize=(0,0),sigmaX=sig,sigmaY=sig)
-        return initImg
+        sift_ini_sigma = self.sift_ini_sigma
+        sig = np.sqrt(sigma*sigma-sift_ini_sigma*sift_ini_sigma*4)
+        init_img = cv2.cvtColor(src=img,code=cv2.COLOR_BGR2GRAY)
+        init_img = cv2.resize(src=init_img,dsize=(img.shape[1]*2,
+                    img.shape[0]*2),fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
+        init_img = cv2.GaussianBlur(src=init_img,ksize=(0,0),
+                                     sigmaX=sig,sigmaY=sig)
+        return init_img
 
-    def draw_sift_features(self,image,keypoints,featureRois):
+    def draw_sift_features(self,image,keypoints,feature_rois):
         for i in range(len(keypoints)):
             keypt = keypoints[i]
-            featureRoi = featureRois[i]
+            featureRoi = feature_rois[i]
             o = keypt[1]
             x1 = keypt[3]*pow(2,o)
             y1 = keypt[4]*pow(2,o)
@@ -285,7 +302,8 @@ class sift_feature():
                 if mag>10**(-6):
                     x2 = np.round(x1+mag*np.cos(k*thetaPer+thetaPer/2)).astype(np.int)
                     y2 = np.round(y1+mag*np.sin(k*thetaPer+thetaPer/2)).astype(np.int)
-                    cv2.arrowedLine(img=image,pt1=(y1,x1),pt2=(y2,x2),color=(255,0,0))
+                    cv2.arrowedLine(img=image,pt1=(y1,x1),pt2=(y2,x2),
+                                    color=(255,0,0))
         cv2.imshow('sift',image)
         cv2.waitKey()
         return image
@@ -294,14 +312,16 @@ if __name__ == '__main__':
     image = cv2.imread('white_cat.jpg')
     image = image.astype(np.float32)
     sift_featrue = sift_feature()
-    initImg = sift_featrue.create_minus_one_img(image)
+    init_img = sift_featrue.create_minus_one_img(image)
 
-    gaussPyr = sift_featrue.create_guassPyr(initImg=initImg,octaves=4)
-    dogsPyr = sift_featrue.create_dogPyr(gaussPyr=gaussPyr)
-    keypoints = sift_featrue.key_point_search(dogPyr=dogsPyr)
+    gauss_pyr = sift_featrue.create_guass_pyr(init_img=init_img,octaves=4)
+    dogsPyr = sift_featrue.create_dog_pyr(gauss_pyr=gauss_pyr)
+    keypoints = sift_featrue.key_point_search(dog_pyr=dogsPyr)
     print(len(keypoints))
     print(type(keypoints))
-    featureRois = sift_featrue.cal_featureOris(gaussPyr=gaussPyr,keypoints=keypoints)
-    print(featureRois.shape)
-    siftImage = sift_featrue.draw_sift_features(image=image.astype(np.uint8),keypoints=keypoints,featureRois=featureRois)
-    cv2.imwrite('sift_white_cat.jpg',siftImage)
+    feature_rois = sift_featrue.cal_feature_oris(gauss_pyr=gauss_pyr,
+                                                 keypoints=keypoints)
+    print(feature_rois.shape)
+    sift_image = sift_featrue.draw_sift_features(image=image.astype(np.uint8),
+                               keypoints=keypoints,feature_rois=feature_rois)
+    cv2.imwrite('sift_white_cat.jpg',sift_image)
